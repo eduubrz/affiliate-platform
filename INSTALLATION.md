@@ -15,7 +15,7 @@
 
 ```bash
 # Clonar o repositório
-git clone https://github.com/seu-usuario/affiliate-platform.git
+git clone https://github.com/eduubrz/affiliate-platform.git
 cd affiliate-platform
 
 # Copiar e editar variáveis de ambiente da API
