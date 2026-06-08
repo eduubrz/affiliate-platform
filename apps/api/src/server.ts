@@ -10,8 +10,8 @@ async function main() {
   await redis.connect();
 
   httpServer.listen(env.PORT, () => {
-    logger.info(API running on http://localhost:${env.PORT}/api/${env.API_VERSION});
-    logger.info(Environment: ${env.NODE_ENV});
+    logger.info(`API running on http://localhost:${env.PORT}/api/${env.API_VERSION}`);
+    logger.info(`Environment: ${env.NODE_ENV}`);
   });
 
   process.on("SIGTERM", async () => {
