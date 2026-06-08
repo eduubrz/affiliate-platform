@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import jwt, { Secret } from "jsonwebtoken";
 import { prisma } from "../../config/database";
 import { env } from "../../config/env";
 import { AppError } from "../../shared/utils/AppError";
@@ -25,7 +25,7 @@ export class AuthService {
     if (!match) throw new AppError("Invalid credentials", 401);
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     const tokens = await this.generateTokens(user.id);
-    logger.info(User logged in: ${user.email});
+    logger.info(`User logged in: ${user.email}`);
     const { passwordHash: _ph, ...safeUser } = user;
     return { user: safeUser, tokens };
   }
@@ -54,11 +54,11 @@ export class AuthService {
   }
 
   private async generateTokens(userId: string) {
-    const accessToken = jwt.sign({ sub: userId }, env.JWT_ACCESS_SECRET, {
-      expiresIn: env.JWT_ACCESS_EXPIRES,
+    const accessToken = jwt.sign({ sub: userId }, env.JWT_ACCESS_SECRET as unknown as Secret, {
+      expiresIn: env.JWT_ACCESS_EXPIRES as jwt.SignOptions['expiresIn'],
     });
-    const refreshToken = jwt.sign({ sub: userId }, env.JWT_REFRESH_SECRET, {
-      expiresIn: env.JWT_REFRESH_EXPIRES,
+    const refreshToken = jwt.sign({ sub: userId }, env.JWT_REFRESH_SECRET as unknown as Secret, {
+      expiresIn: env.JWT_REFRESH_EXPIRES as jwt.SignOptions['expiresIn'],
     });
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
