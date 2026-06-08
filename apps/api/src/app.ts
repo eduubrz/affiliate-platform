@@ -4,7 +4,7 @@ import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import { createServer } from "http";
-import { Server as SocketIO } from "socket.io";
+import { Server as SocketIO, Socket } from "socket.io";
 import { env } from "./config/env";
 import { logger } from "./shared/utils/logger";
 import { errorHandler } from "./shared/middleware/errorHandler";
@@ -26,9 +26,9 @@ export const io = new SocketIO(httpServer, {
   cors: { origin: env.FRONTEND_URL, methods: ["GET", "POST"] },
 });
 
-io.on("connection", (socket) => {
+io.on("connection", (socket: Socket) => {
   socket.on("join-dashboard", (userId: string) => {
-    socket.join(user:${userId});
+    socket.join(`user:${userId}`);
   });
 });
 
@@ -54,7 +54,7 @@ apiRouter.use("/scheduler", schedulerRoutes);
 apiRouter.use("/admin", adminRoutes);
 apiRouter.use("/campaigns", campaignRoutes);
 
-app.use(/api/${env.API_VERSION}, apiRouter);
+app.use(`/api/${env.API_VERSION}`, apiRouter);
 app.use("/t", trackingRoutes);
 app.use((_req: Request, res: Response) => res.status(404).json({ error: "Route not found" }));
 app.use(errorHandler);
