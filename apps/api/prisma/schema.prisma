@@ -1,0 +1,411 @@
+// ============================================================
+// PRISMA SCHEMA — Affiliate Marketing Automation Platform
+// File: apps/api/prisma/schema.prisma
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum Store {
+  SHOPEE
+  MERCADO_LIVRE
+  SHEIN
+  AMAZON
+  ALIEXPRESS
+  OTHER
+}
+
+enum ProductStatus {
+  PENDING      // Link added, not scraped yet
+  SCRAPING     // Currently being scraped
+  READY        // Scraped successfully
+  ERROR        // Scraping failed
+  ARCHIVED     // Manually archived
+}
+
+enum CaptionStyle {
+  URGENCY
+  DISCOUNT
+  CASUAL
+  PREMIUM
+  FLASH_SALE
+  VIRAL
+  INFORMATIVE
+  EMOTIONAL
+}
+
+enum PostStatus {
+  QUEUED
+  APPROVED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum BannerFormat {
+  SQUARE        // 1080x1080
+  STORY         // 1080x1920
+  WHATSAPP      // 800x800
+  BANNER        // 1200x628
+}
+
+// ─────────────────────────────────────────────
+// USERS & AUTH
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          UserRole  @default(EDITOR)
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  refreshTokens RefreshToken[]
+  products      Product[]
+  campaigns     Campaign[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────────
+// PRODUCTS
+// ─────────────────────────────────────────────
+
+model Product {
+  id              String        @id @default(cuid())
+  affiliateUrl    String        // Original affiliate URL
+  store           Store
+  status          ProductStatus @default(PENDING)
+
+  // Scraped data
+  title           String?
+  originalTitle   String?       // Raw title from store
+  description     String?
+  price           Decimal?      @db.Decimal(10, 2)
+  originalPrice   Decimal?      @db.Decimal(10, 2)
+  discountPercent Int?
+  currency        String        @default("BRL")
+  couponCode      String?
+  couponDiscount  String?
+  shippingInfo    String?
+  isFreeShipping  Boolean       @default(false)
+  rating          Decimal?      @db.Decimal(3, 2)
+  reviewCount     Int?
+  soldCount       Int?
+  imageUrls       String[]      // Array of product images
+  primaryImageUrl String?       // Main image used for banners
+  storeProductId  String?       // ID on the original store
+  category        String?
+  tags            String[]
+
+  // Processing metadata
+  scrapedAt       DateTime?
+  scrapeError     String?
+  retryCount      Int           @default(0)
+
+  // Performance tracking
+  clickCount      Int           @default(0)
+  conversionCount Int           @default(0)
+
+  // Relations
+  createdBy       String
+  createdByUser   User          @relation(fields: [createdBy], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  captions        Caption[]
+  banners         Banner[]
+  posts           Post[]
+  campaignProducts CampaignProduct[]
+  analyticsEvents  AnalyticsEvent[]
+
+  @@index([store])
+  @@index([status])
+  @@index([createdAt])
+  @@map("products")
+}
+
+// ─────────────────────────────────────────────
+// AI CONTENT
+// ─────────────────────────────────────────────
+
+model Caption {
+  id          String       @id @default(cuid())
+  productId   String
+  style       CaptionStyle
+  content     String       @db.Text
+  emojis      String[]
+  hashtags    String[]
+  callToAction String?
+  language    String       @default("pt-BR")
+  tokenCount  Int?
+  isApproved  Boolean      @default(false)
+  isFavorite  Boolean      @default(false)
+  usedCount   Int          @default(0)
+  clickRate   Decimal?     @db.Decimal(5, 4)
+  createdAt   DateTime     @default(now())
+
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  posts       Post[]
+
+  @@index([productId])
+  @@index([style])
+  @@map("captions")
+}
+
+// ─────────────────────────────────────────────
+// BANNERS / IMAGES
+// ─────────────────────────────────────────────
+
+model Banner {
+  id          String       @id @default(cuid())
+  productId   String
+  format      BannerFormat
+  imageUrl    String       // S3/storage URL
+  thumbnailUrl String?
+  width       Int
+  height      Int
+  template    String?      // Which template was used
+  isFavorite  Boolean      @default(false)
+  usedCount   Int          @default(0)
+  createdAt   DateTime     @default(now())
+
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  posts       Post[]
+
+  @@index([productId])
+  @@map("banners")
+}
+
+// ─────────────────────────────────────────────
+// CAMPAIGNS
+// ─────────────────────────────────────────────
+
+model Campaign {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  status      CampaignStatus @default(DRAFT)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdBy   String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  createdByUser User           @relation(fields: [createdBy], references: [id])
+  products      CampaignProduct[]
+  schedules     Schedule[]
+
+  @@map("campaigns")
+}
+
+model CampaignProduct {
+  id         String   @id @default(cuid())
+  campaignId String
+  productId  String
+  order      Int      @default(0)
+  addedAt    DateTime @default(now())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, productId])
+  @@map("campaign_products")
+}
+
+// ─────────────────────────────────────────────
+// WHATSAPP
+// ─────────────────────────────────────────────
+
+model WhatsAppGroup {
+  id          String   @id @default(cuid())
+  name        String
+  groupId     String   @unique // WA internal group ID
+  description String?
+  memberCount Int?
+  isActive    Boolean  @default(true)
+  lastPostAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schedules   Schedule[]
+  posts       Post[]
+
+  @@map("whatsapp_groups")
+}
+
+// ─────────────────────────────────────────────
+// SCHEDULING
+// ─────────────────────────────────────────────
+
+model Schedule {
+  id          String   @id @default(cuid())
+  campaignId  String?
+  groupId     String
+  cronExpr    String?  // Cron expression for recurring
+  scheduledAt DateTime? // One-time specific time
+  isRecurring Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  requiresApproval Boolean @default(false)
+  maxPerDay   Int?     // Max posts per day to this group
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign    Campaign?     @relation(fields: [campaignId], references: [id])
+  group       WhatsAppGroup @relation(fields: [groupId], references: [id])
+  posts       Post[]
+
+  @@map("schedules")
+}
+
+// ─────────────────────────────────────────────
+// POSTS (Execution log)
+// ─────────────────────────────────────────────
+
+model Post {
+  id          String     @id @default(cuid())
+  productId   String
+  captionId   String?
+  bannerId    String?
+  groupId     String
+  scheduleId  String?
+  status      PostStatus @default(QUEUED)
+  scheduledAt DateTime
+  sentAt      DateTime?
+  failReason  String?
+  messageId   String?    // WA message ID after send
+  retryCount  Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  product     Product       @relation(fields: [productId], references: [id])
+  caption     Caption?      @relation(fields: [captionId], references: [id])
+  banner      Banner?       @relation(fields: [bannerId], references: [id])
+  group       WhatsAppGroup @relation(fields: [groupId], references: [id])
+  schedule    Schedule?     @relation(fields: [scheduleId], references: [id])
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([productId])
+  @@map("posts")
+}
+
+// ─────────────────────────────────────────────
+// ANALYTICS
+// ─────────────────────────────────────────────
+
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  productId   String?
+  postId      String?
+  eventType   String   // click | conversion | impression
+  revenue     Decimal? @db.Decimal(10, 2)
+  source      String?  // Which group/channel
+  userAgent   String?
+  ipHash      String?  // Hashed for privacy
+  metadata    Json?
+  occurredAt  DateTime @default(now())
+
+  product     Product? @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([eventType])
+  @@index([occurredAt])
+  @@map("analytics_events")
+}
+
+// ─────────────────────────────────────────────
+// ADMIN
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String   // CREATE_PRODUCT | DELETE_USER | etc.
+  resource   String   // products | users | campaigns
+  resourceId String?
+  oldData    Json?
+  newData    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // info | success | warning | error
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model AppSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
