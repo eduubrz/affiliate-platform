@@ -4,7 +4,7 @@ import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import { createServer } from "http";
-import { Server as SocketIO, Socket } from "socket.io";
+import { Server as SocketIO } from "socket.io";
 import { env } from "./config/env";
 import { logger } from "./shared/utils/logger";
 import { errorHandler } from "./shared/middleware/errorHandler";
@@ -26,7 +26,7 @@ export const io = new SocketIO(httpServer, {
   cors: { origin: env.FRONTEND_URL, methods: ["GET", "POST"] },
 });
 
-io.on("connection", (socket: Socket) => {
+io.on("connection", (socket) => {
   socket.on("join-dashboard", (userId: string) => {
     socket.join(`user:${userId}`);
   });

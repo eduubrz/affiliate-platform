@@ -3,7 +3,7 @@ import winston from "winston";
 const { combine, timestamp, colorize, printf } = winston.format;
 
 const devFormat = printf(({ level, message, timestamp }) => {
-  return ${timestamp} [${level}]: ${message};
+  return `${timestamp} [${level}]: ${message}`;
 });
 
 export const logger = winston.createLogger({

@@ -25,7 +25,7 @@ export class ProductService {
       data: { affiliateUrl, store, status: "PENDING", createdBy: userId },
     });
     await scraperQueue.add("scrape-product", { productId: product.id, affiliateUrl }, { attempts: 3 });
-    logger.info(Product ${product.id} queued for scraping);
+    logger.info(`Product ${product.id} queued for scraping`);
     return product;
   }
 
@@ -46,7 +46,7 @@ export class ProductService {
         queued++;
       } catch (e: any) {
         invalid++;
-        errors.push(${url}: ${e.message});
+        errors.push(`${url}: ${e.message}`);
       }
     }
     return { queued, invalid, errors };

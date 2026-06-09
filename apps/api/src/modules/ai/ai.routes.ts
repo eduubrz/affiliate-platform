@@ -34,14 +34,14 @@ router.post("/generate", asyncHandler(async (req: Request, res: Response) => {
   if (product.status !== "READY") throw new AppError("Product not ready yet", 400);
 
   const context = [
-    Nome: ${product.title},
-    Loja: ${product.store},
-    Preco atual: R$ ${product.price},
-    product.originalPrice ? Preco original: R$ ${product.originalPrice} : "",
-    product.discountPercent ? Desconto: ${product.discountPercent}% : "",
+    `Nome: ${product.title}`,
+    `Loja: ${product.store}`,
+    `Preco atual: R$ ${product.price}`,
+    product.originalPrice ? `Preco original: R$ ${product.originalPrice}` : "",
+    product.discountPercent ? `Desconto: ${product.discountPercent}%` : "",
     product.isFreeShipping ? "Frete: GRATIS" : "",
-    product.couponCode ? Cupom: ${product.couponCode} : "",
-    product.rating ? Avaliacao: ${product.rating}/5 : "",
+    product.couponCode ? `Cupom: ${product.couponCode}` : "",
+    product.rating ? `Avaliacao: ${product.rating}/5` : "",
   ].filter(Boolean).join("\n");
 
   const results = [];
@@ -58,7 +58,7 @@ router.post("/generate", asyncHandler(async (req: Request, res: Response) => {
         },
         {
           role: "user",
-          content: ${STYLES[style] || ""}\n\nPRODUTO:\n${context}\n\nGere ${count} legendas DIFERENTES e UNICAS em portugues brasileiro informal. Nunca repita.
+          content: `${STYLES[style] || ""}\n\nPRODUTO:\n${context}\n\nGere ${count} legendas DIFERENTES e UNICAS em portugues brasileiro informal. Nunca repita.`
         },
       ],
     });

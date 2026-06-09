@@ -1,6 +1,5 @@
-/// <reference types="node" />
 import dotenv from "dotenv";
-const newLocal = dotenv.config();
+dotenv.config();
 
 function required(key: string): string {
   const value = process.env[key];
