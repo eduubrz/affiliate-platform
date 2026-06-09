@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   postgres:
@@ -9,30 +9,19 @@ services:
       POSTGRES_USER: affiliate
       POSTGRES_PASSWORD: strongpassword
       POSTGRES_DB: affiliate_platform
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U affiliate -d affiliate_platform"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
     container_name: affiliate_redis
     restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
     ports:
       - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    volumes:
+      - redis_data:/data
 
   minio:
     image: minio/minio:latest
@@ -42,54 +31,13 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-    volumes:
-      - minio_data:/data
     ports:
       - "9000:9000"
       - "9001:9001"
-
-  api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    container_name: affiliate_api
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    env_file:
-      - ./apps/api/.env
-    ports:
-      - "4000:4000"
     volumes:
-      - ./apps/api:/app
-      - /app/node_modules
-
-  web:
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
-    container_name: affiliate_web
-    restart: unless-stopped
-    depends_on:
-      - api
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
-      NEXT_PUBLIC_WS_URL: http://localhost:4000
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./apps/web:/app
-      - /app/node_modules
-      - /app/.next
+      - minio_data:/data
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
-
-networks:
-  default:
-    name: affiliate_network
