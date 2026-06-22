@@ -190,10 +190,10 @@ Consulte o arquivo `INSTALLATION.md` para instruções completas.
 
 Adicione capturas de tela aqui.
 
-```md
-![Dashboard](docs/dashboard.png)
-![Produtos](docs/products.png)
-```
+
+![Dashboard](docs/Dashboard.png)
+![Produtos](docs/Products.png)
+
 
 ---
 
@@ -270,6 +270,7 @@ Atualmente não está em desenvolvimento ativo.
 Distribuído sob a licença MIT.
 
 Consulte o arquivo LICENSE para mais informações.
+
 
 ---
 
